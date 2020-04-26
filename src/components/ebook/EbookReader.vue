@@ -8,6 +8,9 @@
 
 import {ebookMixin} from '../../utils/mixin'
 import Epub from 'epubjs'
+import { getFontFamily,savefontFamily,
+         getFontSize,savefontSize } 
+        from '../../utils/localStorage';
 global.ePub = Epub
 export default {
     mounted(){
@@ -18,6 +21,24 @@ export default {
     },
     mixins:[ebookMixin],
     methods:{
+        initFontSize(){
+            let fontSize = getFontSize(this.fileName)
+            if(!fontSize){
+                savefontSize(this.fileName,this.defaultFontSize)
+            }else{
+                this.rendition.themes.fontSize(fontSize)
+                this.setDefaultFontSize(fontSize)
+            }
+        },
+        initFontFamily(){
+            let font = getFontFamily(this.fileName)
+            if(!font){
+                savefontFamily(this.fileName,this.defaultFontFamily)
+            }else{
+                this.rendition.themes.font(font)
+                this.setDefaultFontFamily(font)
+            }
+        },
         initEpub(){
             const url = 'http://192.168.0.109:8081/epub/' + this.fileName + '.epub'
             this.book = new Epub(url)
@@ -27,7 +48,10 @@ export default {
                 height:innerHeight,
                 method:'default'
             })
-            this.rendition.display()
+            this.rendition.display().then(()=>{
+                this.initFontSize()
+                this.initFontFamily()                
+            })
             this.rendition.on('touchstart',event => {
                 this.touchStartX = event.changedTouches[0].clientX
                 this.touchStartTime = event.timeStamp
@@ -44,6 +68,14 @@ export default {
                 }
                 event.preventDefault()
                 event.stopPropagation()
+            })
+            this.rendition.hooks.content.register(contents => {
+                Promise.all([
+                    contents.addStylesheet(`${process.env.VUE_APP_RES_URL}/fonts/daysOne.css`),
+                    contents.addStylesheet(`${process.env.VUE_APP_RES_URL}/fonts/cabin.css`),
+                    contents.addStylesheet(`${process.env.VUE_APP_RES_URL}/fonts/montserrat.css`),
+                    contents.addStylesheet(`${process.env.VUE_APP_RES_URL}/fonts/tangerine.css`)
+                ]).then(()=>{})
             })
         },
         prevPage(){
@@ -63,6 +95,7 @@ export default {
                 this.setSettingVisible(-1)
             }
             this.setMenuVisible(!this.menuVisible)
+            this.setFontFamilyVisible(false)
         },
         hideTitleAndMenu(){
             this.setMenuVisible(false)
